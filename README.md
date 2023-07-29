@@ -7,7 +7,6 @@ from typing import Annotated
 
 from aiogram import Router, Bot, Dispatcher
 from aiogram.types import Message, User
-
 from aiogram3_di import DIMiddleware, Depends
 
 router = Router()
