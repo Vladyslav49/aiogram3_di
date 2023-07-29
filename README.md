@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
 ### Details
 
-It is inspired by [FastAPI]('https://github.com/tiangolo/fastapi').
+It is inspired by [FastAPI](https://github.com/tiangolo/fastapi).
 
 If you define a normal def, your function will be called in a different thread.
 

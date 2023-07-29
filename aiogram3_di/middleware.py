@@ -1,4 +1,5 @@
 from collections.abc import Callable, Awaitable
+from contextlib import AsyncExitStack
 from typing import Any
 
 from aiogram import BaseMiddleware
@@ -14,5 +15,6 @@ class DIMiddleware(BaseMiddleware):
             event: TelegramObject,
             data: dict[str, Any]
     ) -> Any:
-        data = await process_dependencies(data.copy())
-        return await handler(event, data)
+        async with AsyncExitStack() as stack:
+            data = await process_dependencies(stack, data.copy())
+            return await handler(event, data)

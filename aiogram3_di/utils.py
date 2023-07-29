@@ -38,34 +38,45 @@ async def _contextmanager_in_threadpool(cm: ContextManager):
         await asyncio.to_thread(cm.__exit__, None, None, None)
 
 
-async def process_dependencies(data: dict[str, Any]) -> dict[str, Any]:
+def _extract_params(annotations: dict[str, Any], param_data: dict[tuple[int, str], Any]) -> dict[str, Any]:
+    dependencies: list[tuple[int, str]] = [(hash(value.__metadata__[0].func or value.__origin__), key) for key, value in annotations.items()
+                                            if isinstance(value, _AnnotatedAlias) and isinstance(value.__metadata__[0], Depends)]
+    return {param_name: param_data[(func_hash, param_name)] for func_hash, param_name in dependencies}
+
+
+async def _process_dependency(
+        cache: dict[int, Any],
+        call: Callable[..., Any],
+        use_cache: bool,
+        stack: AsyncExitStack,
+        data: dict[str, Any],
+        param_data: dict[tuple[int, str], Any]
+) -> Any:
+    if (cached_value := cache.get(hash(call))) and use_cache:
+        return cached_value
+
+    values = _get_valid_kwargs((data | _extract_params(inspect.getfullargspec(call).annotations, param_data)), call)
+
+    if inspect.isasyncgenfunction(call):
+        cm = asynccontextmanager(call)(**values)
+        return await stack.enter_async_context(cm)
+    elif inspect.isgeneratorfunction(call):
+        cm = _contextmanager_in_threadpool(contextmanager(call)(**values))
+        return await stack.enter_async_context(cm)
+    elif asyncio.iscoroutinefunction(call):
+        return await call(**values)
+    else:
+        return await asyncio.to_thread(call, **values)
+
+
+async def process_dependencies(stack: AsyncExitStack, data: dict[str, Any]) -> dict[str, Any]:
     param_data: dict[tuple[int, str], Any] = {}
     cache: dict[int, Any] = {}
 
-    async with AsyncExitStack() as stack:
-        for param_name, dependency, type_annotation in _get_dependencies(data['handler'].spec.annotations):
-            call = dependency.func or type_annotation
+    for param_name, dependency, type_annotation in _get_dependencies(data['handler'].spec.annotations):
+        call = dependency.func or type_annotation
+        result = await _process_dependency(cache, call, dependency.use_cache, stack, data, param_data)
+        param_data[(hash(call)), param_name] = result
+        cache.setdefault(hash(call), result)
 
-            if (cached_value := cache.get(hash(call))) and dependency.use_cache:
-                result = cached_value
-            else:
-                func_dependencies: list[tuple[int, str]] = [(hash(value.__metadata__[0].func or value.__origin__), key) for key, value in inspect.getfullargspec(call).annotations.items()
-                                                             if isinstance(value, _AnnotatedAlias) and isinstance(value.__metadata__[0], Depends)]
-                values = _get_valid_kwargs(data | {param_name: param_data[(func_hash, param_name)] for func_hash, param_name in func_dependencies}, call)
-
-                if inspect.isasyncgenfunction(call):
-                    cm = asynccontextmanager(call)(**values)
-                    result = await stack.enter_async_context(cm)
-                elif inspect.isgeneratorfunction(call):
-                    cm = _contextmanager_in_threadpool(contextmanager(call)(**values))
-                    result = await stack.enter_async_context(cm)
-                elif asyncio.iscoroutinefunction(call):
-                    result = await call(**values)
-                else:
-                    result = await asyncio.to_thread(call, **values)
-
-            param_data[(hash(call)), param_name] = result
-            cache.setdefault(hash(call), result)
-    handler_dependencies: list[tuple[int, str]] = [(hash(value.__metadata__[0].func or value.__origin__), key) for key, value in data['handler'].spec.annotations.items()
-                                                    if isinstance(value, _AnnotatedAlias) and isinstance(value.__metadata__[0], Depends)]
-    return data | {param_name: param_data[(func_hash, param_name)] for func_hash, param_name in handler_dependencies}
+    return data | _extract_params(data['handler'].spec.annotations, param_data)
