@@ -36,6 +36,30 @@ if __name__ == '__main__':
     main()
 ```
 
+### Handler Dependencies.
+
+You can use `Depends` in the flags parameter of the handler, for example: 
+
+```python
+flags={'dependencies': [Depends(verify_user)]}
+```
+
+### Global Dependencies.
+
+You can use `Depends` in `dispatcher`, for example:
+
+```python
+dp = Dispatcher()
+dp.dependencies = [Depends(verify_user)]
+```
+
+Or in `router`, for example:
+
+```python
+router = Router()
+router.dependencies = [Depends(verify_user)]
+```
+
 ### Details
 
 It is inspired by [FastAPI](https://github.com/tiangolo/fastapi).

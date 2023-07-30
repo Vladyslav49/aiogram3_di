@@ -44,39 +44,96 @@ def _extract_params(annotations: dict[str, Any], param_data: dict[tuple[int, str
     return {param_name: param_data[(func_hash, param_name)] for func_hash, param_name in dependencies}
 
 
-async def _process_dependency(
+def _is_coroutine_callable(call: Callable[..., Any]) -> bool:
+    if inspect.isroutine(call):
+        return inspect.iscoroutinefunction(call)
+    if inspect.isclass(call):
+        return False
+    dunder_call = getattr(call, '__call__', None)
+    return inspect.iscoroutinefunction(dunder_call)
+
+
+def _is_async_gen_callable(call: Callable[..., Any]) -> bool:
+    if inspect.isasyncgenfunction(call):
+        return True
+    dunder_call = getattr(call, '__call__', None)
+    return inspect.isasyncgenfunction(dunder_call)
+
+
+def _is_gen_callable(call: Callable[..., Any]) -> bool:
+    if inspect.isgeneratorfunction(call):
+        return True
+    dunder_call = getattr(call, '__call__', None)
+    return inspect.isgeneratorfunction(dunder_call)
+
+
+async def __process_dependency(
         cache: dict[int, Any],
         call: Callable[..., Any],
-        use_cache: bool,
+        dependency: Depends,
         stack: AsyncExitStack,
         data: dict[str, Any],
         param_data: dict[tuple[int, str], Any]
 ) -> Any:
-    if (cached_value := cache.get(hash(call))) and use_cache:
+    if (cached_value := cache.get(hash(call))) and dependency.use_cache:
         return cached_value
 
     values = _get_valid_kwargs((data | _extract_params(inspect.getfullargspec(call).annotations, param_data)), call)
 
-    if inspect.isasyncgenfunction(call):
+    if _is_async_gen_callable(call):
         cm = asynccontextmanager(call)(**values)
-        return await stack.enter_async_context(cm)
-    elif inspect.isgeneratorfunction(call):
+        result = await stack.enter_async_context(cm)
+    elif _is_gen_callable(call):
         cm = _contextmanager_in_threadpool(contextmanager(call)(**values))
-        return await stack.enter_async_context(cm)
-    elif asyncio.iscoroutinefunction(call):
-        return await call(**values)
+        result = await stack.enter_async_context(cm)
+    elif _is_coroutine_callable(call):
+        result = await call(**values)
     else:
-        return await asyncio.to_thread(call, **values)
+        result = await asyncio.to_thread(call, **values)
+    cache.setdefault(hash(dependency.func), result)
+    return result
 
 
-async def process_dependencies(stack: AsyncExitStack, data: dict[str, Any]) -> dict[str, Any]:
+async def _process_dependency(
+        cache: dict[int, Any],
+        stack: AsyncExitStack,
+        data: dict[str, Any],
+        param_data: dict[tuple[int, str], Any],
+        dependency: Depends,
+        type_annotation: Any,
+        param_name: str
+) -> None:
+    call = dependency.func or type_annotation
+    result = await __process_dependency(cache, call, dependency, stack, data, param_data)
+    param_data[(hash(call)), param_name] = result
+
+
+async def _process_global_dependency(
+        cache: dict[int, Any],
+        stack: AsyncExitStack,
+        data: dict[str, Any],
+        param_data: dict[tuple[int, str], Any],
+        dependency: Depends
+) -> None:
+    for param_name, sub_dependency, type_annotation in _get_dependencies(inspect.getfullargspec(dependency.func).annotations):
+        await _process_dependency(cache, stack, data, param_data, sub_dependency, type_annotation, param_name)
+
+    await __process_dependency(cache, dependency.func, dependency, stack, data, param_data)
+
+
+async def process_dependencies(
+        stack: AsyncExitStack,
+        global_dependencies: list[Depends],
+        handler_dependencies: list[Depends],
+        data: dict[str, Any]
+) -> dict[str, Any]:
     param_data: dict[tuple[int, str], Any] = {}
     cache: dict[int, Any] = {}
 
+    for global_dependency in (global_dependencies + handler_dependencies):
+        await _process_global_dependency(cache, stack, data, param_data, global_dependency)
+
     for param_name, dependency, type_annotation in _get_dependencies(data['handler'].spec.annotations):
-        call = dependency.func or type_annotation
-        result = await _process_dependency(cache, call, dependency.use_cache, stack, data, param_data)
-        param_data[(hash(call)), param_name] = result
-        cache.setdefault(hash(call), result)
+        await _process_dependency(cache, stack, data, param_data, dependency, type_annotation, param_name)
 
     return data | _extract_params(data['handler'].spec.annotations, param_data)
