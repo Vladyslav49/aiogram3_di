@@ -78,7 +78,7 @@ async def __process_dependency(
     if (cached_value := cache.get(hash(call))) and dependency.use_cache:
         return cached_value
 
-    values = _get_valid_kwargs((data | _extract_params(inspect.getfullargspec(call).annotations, param_data)), call)
+    values = _get_valid_kwargs((data | _extract_params(inspect.get_annotations(call), param_data)), call)
 
     if _is_async_gen_callable(call):
         cm = asynccontextmanager(call)(**values)
@@ -115,7 +115,7 @@ async def _process_global_dependency(
         param_data: dict[tuple[int, str], Any],
         dependency: Depends
 ) -> None:
-    for param_name, sub_dependency, type_annotation in _get_dependencies(inspect.getfullargspec(dependency.func).annotations):
+    for param_name, sub_dependency, type_annotation in _get_dependencies(inspect.get_annotations(dependency.func)):
         await _process_dependency(cache, stack, data, param_data, sub_dependency, type_annotation, param_name)
 
     await __process_dependency(cache, dependency.func, dependency, stack, data, param_data)
