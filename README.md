@@ -6,14 +6,14 @@ from os import getenv
 from typing import Annotated
 
 from aiogram import Router, Bot, Dispatcher
-from aiogram.types import Message, User
+from aiogram.types import Message
 from aiogram3_di import DIMiddleware, Depends
 
 router = Router()
 
 
-def get_user_full_name(event_from_user: User) -> str:
-    return event_from_user.full_name
+def get_user_full_name(event: Message) -> str:
+    return event.from_user.full_name
 
 
 @router.message()

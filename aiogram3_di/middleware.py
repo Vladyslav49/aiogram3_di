@@ -22,5 +22,5 @@ class DIMiddleware(BaseMiddleware):
 
         async with AsyncExitStack() as stack:
             data = await process_dependencies(stack, (dispatcher_dependencies + router_dependencies),
-                                              handler_dependencies, data.copy())
+                                              handler_dependencies, (data.copy() | {'event': event}))
             return await handler(event, data)
