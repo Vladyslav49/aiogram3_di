@@ -136,4 +136,6 @@ async def process_dependencies(
     for param_name, dependency, type_annotation in _get_dependencies(data['handler'].spec.annotations):
         await _process_dependency(cache, stack, data, param_data, dependency, type_annotation, param_name)
 
+    del data['event']
+
     return data | _extract_params(data['handler'].spec.annotations, param_data)
