@@ -1,3 +1,9 @@
-from .middleware import DIMiddleware as DIMiddleware
-from .depends import Depends as Depends
-from ._version import __version__ as __version__
+from .middleware import DIMiddleware
+from .depends import Depends
+from ._version import __version__
+
+__all__ = (
+    'DIMiddleware',
+    'Depends',
+    '__version__'
+)
