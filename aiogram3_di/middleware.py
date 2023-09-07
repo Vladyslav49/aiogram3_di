@@ -6,7 +6,7 @@ from aiogram import BaseMiddleware
 from aiogram.dispatcher.flags import get_flag
 from aiogram.types import TelegramObject
 
-from .utils import process_dependencies
+from .resolver import DependenciesResolver
 
 
 class DIMiddleware(BaseMiddleware):
@@ -16,11 +16,12 @@ class DIMiddleware(BaseMiddleware):
             event: TelegramObject,
             data: dict[str, Any]
     ) -> Any:
-        dispatcher_dependencies = list(getattr(data['dispatcher'], 'dependencies', []))
-        router_dependencies = list(getattr(data['event_router'], 'dependencies', []))
-        handler_dependencies = list(get_flag(data, 'dependencies', default=[]))
+        dispatcher_dependencies = tuple(getattr(data['dispatcher'], 'dependencies', ()))
+        router_dependencies = tuple(getattr(data['event_router'], 'dependencies', ()))
+        handler_dependencies = tuple(get_flag(data, 'dependencies', default=()))
 
         async with AsyncExitStack() as stack:
-            data = await process_dependencies(stack, (dispatcher_dependencies + router_dependencies),
-                                              handler_dependencies, (data.copy() | {'event': event}))
+            resolver = DependenciesResolver(stack, (dispatcher_dependencies + router_dependencies),
+                                            handler_dependencies, (data.copy() | {'event': event}))
+            data = await resolver.resolve()
             return await handler(event, data)
