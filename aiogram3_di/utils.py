@@ -15,7 +15,7 @@ def get_valid_kwargs(data: dict[str, Any], func: Callable[..., Any]) -> dict[str
     return {key: value for key, value in data.items() if key in valid_params}
 
 
-def get_dependencies(annotations: dict[str, Any]) -> Iterator[tuple[str, Depends]]:
+def get_dependencies(annotations: dict[str, Any]) -> Iterator[tuple[str, Depends, Any]]:
     for annotation_key, annotation_value in annotations.items():
         if isinstance(annotation_value, inspect.Parameter):
             annotation_value = annotation_value.annotation
@@ -40,10 +40,10 @@ async def contextmanager_in_threadpool(cm: ContextManager):
         await asyncio.to_thread(cm.__exit__, None, None, None)
 
 
-def extract_params(annotations: dict[str, Any], param_data: ParamData) -> dict[str, Any]:
+def extract_params(annotations: dict[str, Any], param_data: ParamData) -> dict[str, Any]:  # noqa: E501
     dependencies: list[tuple[int, str]] = [(hash(value.__metadata__[0].func or value.__origin__), key) for key, value in annotations.items()
                                             if isinstance(value, _AnnotatedAlias) and isinstance(value.__metadata__[0], Depends)]
-    return {param_name: param_data[(func_hash, param_name)] for func_hash, param_name in dependencies}
+    return {param_name: param_data[(func_hash, param_name)] for func_hash, param_name in dependencies}  # noqa: E501
 
 
 def is_coroutine_callable(call: Callable[..., Any]) -> bool:
