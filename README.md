@@ -6,33 +6,38 @@ from os import getenv
 from typing import Annotated
 
 from aiogram import Router, Bot, Dispatcher
-from aiogram.types import Message
-from aiogram3_di import DIMiddleware, Depends
+from aiogram.types import Message, User
+from aiogram3_di import setup_di, Depends
 
 router = Router()
 
 
-def get_user_full_name(event: Message) -> str:
-    return event.from_user.full_name
+def get_user_full_name(event_from_user: User) -> str:
+    return event_from_user.full_name
 
 
 @router.message()
-async def _(message: Message, full_name: Annotated[str, Depends(get_user_full_name)]) -> None:
-    await message.answer(f'Hi {full_name}')
+async def start(
+        message: Message, full_name: Annotated[str, Depends(get_user_full_name)]
+) -> None:
+    await message.answer(f"Hi {full_name}")
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
 
-    bot = Bot(token=getenv('BOT_TOKEN'))
+    bot = Bot(token=getenv("BOT_TOKEN"))
 
     dp = Dispatcher()
+
     dp.include_router(router)
-    dp.message.middleware(DIMiddleware())  # register Dependency Injection middleware
+
+    setup_di(dp)
+
     dp.run_polling(bot)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 ```
 
@@ -41,23 +46,7 @@ if __name__ == '__main__':
 You can use `Depends` in the flags parameter of the handler, for example: 
 
 ```python
-flags={'dependencies': [Depends(verify_user)]}
-```
-
-### Global Dependencies.
-
-You can use `Depends` in `dispatcher`, for example:
-
-```python
-dp = Dispatcher()
-dp.dependencies = [Depends(verify_user)]
-```
-
-Or in `router`, for example:
-
-```python
-router = Router()
-router.dependencies = [Depends(verify_user)]
+flags={"dependencies": [Depends(verify_user)]}
 ```
 
 ### Details

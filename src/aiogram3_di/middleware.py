@@ -14,14 +14,16 @@ class DIMiddleware(BaseMiddleware):
             self,
             handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
             event: TelegramObject,
-            data: dict[str, Any]
+            data: dict[str, Any],
     ) -> Any:
-        dispatcher_dependencies = tuple(getattr(data['dispatcher'], 'dependencies', ()))
-        router_dependencies = tuple(getattr(data['event_router'], 'dependencies', ()))
-        handler_dependencies = tuple(get_flag(data, 'dependencies', default=()))
+        handler_dependencies = tuple(get_flag(data, "dependencies", default=()))
 
         async with AsyncExitStack() as stack:
-            resolver = DependenciesResolver(stack, (dispatcher_dependencies + router_dependencies),
-                                            handler_dependencies, (data.copy() | {'event': event}))
+            resolver = DependenciesResolver(
+                stack,
+                handler_dependencies=handler_dependencies,
+                event=event,
+                middleware_data=data.copy(),
+            )
             data = await resolver.resolve()
             return await handler(event, data)
