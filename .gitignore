@@ -3,4 +3,4 @@ __pycache__
 poetry.lock
 .pytest_cache/
 .ruff_cache/
-.dist/
+dist/
