@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "aiogram3-di"
+version = "1.0.9"
+description = "Dependency Injection implementation for aiogram 3."
+authors = ["Vladyslav Timofeev <Timofeevvladyslav49@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+packages = [{include = "aiogram3_di", from = "src"}]
+repository = "https://github.com/Vladyslav49/aiogram3_di"
+keywords = [
+    "Aiogram",
+    "Telegram",
+    "Bots",
+    "DI",
+    "Dependency Injection",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+]
+
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+aiogram = ">=3.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
