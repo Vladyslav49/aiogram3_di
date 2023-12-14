@@ -8,8 +8,11 @@ from .depends import Depends
 
 
 def get_valid_kwargs(data: dict[str, Any], call: Callable[..., Any]) -> dict[str, Any]:
-    valid_params = [param.name for param in inspect.signature(call).parameters.values()
-                    if param.default == inspect.Parameter.empty]
+    valid_params: list[str] = [
+        param.name
+        for param in inspect.signature(call).parameters.values()
+        if param.default == inspect.Parameter.empty
+    ]
     return {key: value for key, value in data.items() if key in valid_params}
 
 
@@ -21,7 +24,8 @@ def get_dependencies(annotations: dict[str, Any]) -> Iterator[tuple[str, Depends
         if isinstance(annotation_value, _AnnotatedAlias):
             type_annotation, dependency = get_args(annotation_value)[:2]
             if isinstance(dependency, Depends):
-                if parameters := inspect.signature(dependency.func or type_annotation).parameters:
+                call = dependency.func or type_annotation
+                if parameters := inspect.signature(call).parameters:
                     yield from get_dependencies(dict(parameters))
                 yield annotation_key, dependency, type_annotation
 

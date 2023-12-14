@@ -15,7 +15,7 @@ def get_user_full_name(event_from_user: User) -> str:
 
 @router.message()
 async def start(
-        message: Message, full_name: Annotated[str, Depends(get_user_full_name)]
+    message: Message, full_name: Annotated[str, Depends(get_user_full_name)]
 ) -> None:
     assert message.from_user.username == full_name
     await message.answer(f"Hi {full_name}")

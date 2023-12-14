@@ -23,10 +23,10 @@ class ContextManager(AbstractContextManager):
         return random.randint(1, 10)
 
     def __exit__(
-            self,
-            exc_type: type[BaseException] | None,
-            exc_val: BaseException | None,
-            exc_tb: TracebackType | None,
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         self._closed = True
 
@@ -38,8 +38,8 @@ def get_context_manager() -> Iterator[ContextManager]:
 
 @router.message()
 async def start(
-        message: Message,
-        context_manager: Annotated[ContextManager, Depends(get_context_manager)],
+    message: Message,
+    context_manager: Annotated[ContextManager, Depends(get_context_manager)],
 ) -> None:
     number = context_manager.get_random_number()
     await message.answer(f"Number: {number}")

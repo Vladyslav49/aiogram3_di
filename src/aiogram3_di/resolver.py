@@ -24,7 +24,6 @@ CACHE_MISSING = object()
 
 
 class DependenciesResolver:
-
     __slots__ = (
         "_stack",
         "_handler_dependencies",
@@ -35,12 +34,12 @@ class DependenciesResolver:
     )
 
     def __init__(
-            self,
-            stack: AsyncExitStack,
-            *,
-            handler_dependencies: tuple[Depends, ...],
-            event: TelegramObject,
-            middleware_data: dict[str, Any],
+        self,
+        stack: AsyncExitStack,
+        *,
+        handler_dependencies: tuple[Depends, ...],
+        event: TelegramObject,
+        middleware_data: dict[str, Any],
     ) -> None:
         self._stack = stack
         self._handler_dependencies = handler_dependencies
@@ -56,7 +55,9 @@ class DependenciesResolver:
         handler: HandlerObject = self._middleware_data["handler"]
         handler_annotations = inspect.get_annotations(handler.callback)
 
-        for param_name, dependency, type_annotation in get_dependencies(handler_annotations):
+        for param_name, dependency, type_annotation in get_dependencies(
+            handler_annotations
+        ):
             await self._process_dependency(param_name, dependency, type_annotation)
 
         return self._middleware_data | self._extract_params(handler_annotations)
@@ -65,32 +66,37 @@ class DependenciesResolver:
         dependencies: list[tuple[int, str]] = []
 
         for param_name, param_value in annotations.items():
-            if isinstance(param_value, _AnnotatedAlias) and isinstance(param_value.__metadata__[0], Depends):
+            if isinstance(param_value, _AnnotatedAlias) and isinstance(
+                param_value.__metadata__[0], Depends
+            ):
                 dependency: Depends = param_value.__metadata__[0]
                 type_annotation: Any = param_value.__origin__
                 call = self._get_call(dependency, type_annotation)
                 dependencies.append((hash(call), param_name))
 
         return {
-            param_name: self._param_data[(func_hash, param_name)] for func_hash, param_name in dependencies
+            param_name: self._param_data[(func_hash, param_name)]
+            for func_hash, param_name in dependencies
         }
 
     async def _resolve_handler_dependency(self, dependency: Depends) -> None:
-        for param_name, sub_dependency, type_annotation in get_dependencies(inspect.get_annotations(dependency.func)):
+        for param_name, sub_dependency, type_annotation in get_dependencies(
+            inspect.get_annotations(dependency.func)
+        ):
             await self._process_dependency(param_name, sub_dependency, type_annotation)
 
         call = self._get_call(dependency, None)
         await self.__process_dependency(call, dependency)
 
     async def _process_dependency(
-            self, param_name: str, dependency: Depends, type_annotation: Any
+        self, param_name: str, dependency: Depends, type_annotation: Any
     ) -> None:
         call = self._get_call(dependency, type_annotation)
         result = await self.__process_dependency(call, dependency)
         self._param_data[(hash(call)), param_name] = result
 
     def _get_call(
-            self, dependency: Depends, type_annotation: Any
+        self, dependency: Depends, type_annotation: Any
     ) -> Callable[..., Any]:
         original_call = dependency.func or type_annotation
         di_manager: DIManager = self._middleware_data["di_manager"]
@@ -98,7 +104,7 @@ class DependenciesResolver:
         return call
 
     async def __process_dependency(
-            self, call: Callable[..., Any], dependency: Depends
+        self, call: Callable[..., Any], dependency: Depends
     ) -> Any:
         cached_value = self._cache.get(hash(call), CACHE_MISSING)
 
@@ -106,7 +112,9 @@ class DependenciesResolver:
             return cached_value
 
         params = self._extract_params(inspect.get_annotations(call))
-        values = get_valid_kwargs((self._middleware_data | {"event": self._event} | params), call)
+        values = get_valid_kwargs(
+            (self._middleware_data | {"event": self._event} | params), call
+        )
 
         if is_async_gen_callable(call):
             cm = asynccontextmanager(call)(**values)

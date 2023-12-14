@@ -9,10 +9,10 @@ from aiogram3_di.middleware import DIMiddleware
 
 
 def setup_di(
-        dispatcher: Dispatcher,
-        *,
-        allowed_updates: list[str] | None = None,
-        dependency_overrides: dict[Callable[..., Any], Callable[..., Any]] | None = None,
+    dispatcher: Dispatcher,
+    *,
+    allowed_updates: list[str] | None = None,
+    dependency_overrides: dict[Callable[..., Any], Callable[..., Any]] | None = None,
 ) -> DIManager:
     if not isinstance(dispatcher, Dispatcher):
         raise TypeError("dispatcher must be an instance of aiogram.Dispatcher")
@@ -22,7 +22,7 @@ def setup_di(
             if allowed_update not in dispatcher.observers:
                 raise ValueError(f"`{allowed_update}` is not a valid allowed update")
 
-    for allowed_update in (allowed_updates or dispatcher.resolve_used_update_types()):
+    for allowed_update in allowed_updates or dispatcher.resolve_used_update_types():
         observer: TelegramEventObserver = getattr(dispatcher, allowed_update)
         observer.middleware(DIMiddleware())
 
