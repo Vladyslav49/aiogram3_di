@@ -3,6 +3,7 @@ from os import getenv
 from typing import Annotated
 
 from aiogram import Router, Bot, Dispatcher
+from aiogram.filters import CommandStart
 from aiogram.types import Message, User
 from aiogram3_di import setup_di, Depends
 
@@ -25,7 +26,9 @@ def get_user_full_name(event_from_user: User) -> str:
     return event_from_user.full_name
 
 
-@router.message(flags={"dependencies": [Depends(check_last_name_presence)]})
+@router.message(
+    CommandStart(), flags={"dependencies": [Depends(check_last_name_presence)]}
+)
 async def start(
     message: Message, full_name: Annotated[str, Depends(get_user_full_name)]
 ) -> None:

@@ -7,6 +7,7 @@ from types import TracebackType
 from typing import Annotated
 
 from aiogram import Router, Bot, Dispatcher
+from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram3_di import setup_di, Depends
 
@@ -36,7 +37,7 @@ async def get_async_context_manager() -> Iterator[AsyncContextManager]:
         yield context_manager
 
 
-@router.message()
+@router.message(CommandStart())
 async def start(
     message: Message,
     async_context_manager: Annotated[

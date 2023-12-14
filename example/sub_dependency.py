@@ -3,6 +3,7 @@ from os import getenv
 from typing import Annotated
 
 from aiogram import Router, Bot, Dispatcher
+from aiogram.filters import CommandStart
 from aiogram.types import Message, User
 from aiogram3_di import setup_di, Depends
 
@@ -26,7 +27,7 @@ def get_user_full_name(
     return first_name
 
 
-@router.message()
+@router.message(CommandStart())
 async def start(
     message: Message, full_name: Annotated[str, Depends(get_user_full_name)]
 ) -> None:
