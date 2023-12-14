@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aiogram3-di"
-version = "1.0.9"
+version = "2.0.0"
 description = "Dependency Injection implementation for aiogram 3."
 authors = ["Vladyslav Timofeev <Timofeevvladyslav49@gmail.com>"]
 readme = "README.md"
