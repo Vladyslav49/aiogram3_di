@@ -1,8 +1,5 @@
 ### Example of usage
 
-class CommandStart:
-pass
-
 ```python
 import logging
 from os import getenv
