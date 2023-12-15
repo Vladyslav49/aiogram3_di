@@ -1,14 +1,10 @@
 import inspect
 from typing import Annotated
 
-from aiogram import Router
-from aiogram.filters import CommandStart
 from aiogram.types import Message, User
 
 from aiogram3_di import Depends
 from aiogram3_di.utils import get_dependencies
-
-router = Router()
 
 
 def get_user_first_name(event_from_user: User) -> str:
@@ -28,7 +24,6 @@ def get_user_full_name(
     return first_name
 
 
-@router.message(CommandStart())
 async def start(
     message: Message, full_name: Annotated[str, Depends(get_user_full_name)]
 ) -> None:
