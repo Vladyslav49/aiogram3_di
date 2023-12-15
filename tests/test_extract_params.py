@@ -26,6 +26,7 @@ async def start(
 @pytest.mark.asyncio
 async def test_extract_params(dp: Dispatcher) -> None:
     setup_di(dp)
+    handler_dependencies = ()
     event = Message(
         message_id=0,
         date=time.time(),
@@ -38,7 +39,10 @@ async def test_extract_params(dp: Dispatcher) -> None:
 
     async with AsyncExitStack() as stack:
         resolver = DependenciesResolver(
-            stack, handler_dependencies=(), event=event, middleware_data=middleware_data
+            stack,
+            handler_dependencies=handler_dependencies,
+            event=event,
+            middleware_data=middleware_data,
         )
         resolver._param_data = {
             (hash(get_user_full_name), "full_name"): "Vladyslav Timofeev"

@@ -1,19 +1,18 @@
-import time
 from contextlib import AsyncExitStack
 from typing import Annotated
+from unittest.mock import Mock
 
 import pytest
 from aiogram import Dispatcher
 from aiogram.dispatcher.event.handler import HandlerObject
-from aiogram.enums import ChatType
-from aiogram.types import Message, Chat, User
+from aiogram.types import Message, User, TelegramObject
 
 from aiogram3_di import Depends, setup_di
 from aiogram3_di.resolver import DependenciesResolver
 
 
-def get_user_full_name(event: Message) -> str:
-    return event.from_user.full_name
+def get_user_full_name(event_from_user: User) -> str:
+    return event_from_user.full_name
 
 
 async def start(
@@ -23,17 +22,13 @@ async def start(
 
 
 @pytest.mark.asyncio
-async def test_resolve_dependencies(dp: Dispatcher) -> None:
-    setup_di(dp)
-    handler_dependencies = ()
-    event = Message(
-        message_id=0,
-        date=time.time(),
-        chat=Chat(id=0, type=ChatType.PRIVATE),
-        from_user=User(
-            id=0, is_bot=False, first_name="Vladyslav", last_name="Timofeev"
-        ),
+async def test_cache(dp: Dispatcher) -> None:
+    mocked_get_user_full_name = Mock(
+        side_effect=["Vladyslav Timofeev", "Vlad Timofeev"]
     )
+    setup_di(dp, dependency_overrides={get_user_full_name: mocked_get_user_full_name})
+    handler_dependencies = (Depends(get_user_full_name),)
+    event = TelegramObject()
     middleware_data = dp.workflow_data | {"handler": HandlerObject(start)}
 
     async with AsyncExitStack() as stack:
@@ -45,4 +40,6 @@ async def test_resolve_dependencies(dp: Dispatcher) -> None:
         )
         middleware_data = await resolver.resolve()
 
+    mocked_get_user_full_name.assert_called_once()
     assert middleware_data["full_name"] == "Vladyslav Timofeev"
+    assert resolver._cache == {hash(mocked_get_user_full_name): "Vladyslav Timofeev"}

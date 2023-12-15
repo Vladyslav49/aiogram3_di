@@ -1,11 +1,9 @@
-import time
 from contextlib import AsyncExitStack
 from typing import Annotated
 
 import pytest
 from aiogram import Dispatcher
-from aiogram.enums import ChatType
-from aiogram.types import Message, User, Chat
+from aiogram.types import Message, User, TelegramObject
 
 from aiogram3_di import Depends, setup_di
 from aiogram3_di.resolver import DependenciesResolver
@@ -28,14 +26,16 @@ def get_username(event_from_user: User) -> str:
 @pytest.mark.asyncio
 async def test_dependency_overrides(dp: Dispatcher) -> None:
     setup_di(dp, dependency_overrides={get_user_full_name: get_username})
-    event = Message(
-        message_id=0, date=time.time(), chat=Chat(id=0, type=ChatType.PRIVATE)
-    )
+    handler_dependencies = ()
+    event = TelegramObject()
     middleware_data = dp.workflow_data
 
     async with AsyncExitStack() as stack:
         resolver = DependenciesResolver(
-            stack, handler_dependencies=(), event=event, middleware_data=middleware_data
+            stack,
+            handler_dependencies=handler_dependencies,
+            event=event,
+            middleware_data=middleware_data,
         )
         call = resolver._get_call(
             dependency=Depends(get_user_full_name), type_annotation=str
